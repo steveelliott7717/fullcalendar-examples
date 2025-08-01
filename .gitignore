@@ -7,3 +7,6 @@ tmp
 
 # Outer monorepo
 .turbo
+ 
+node_modules
+.env
