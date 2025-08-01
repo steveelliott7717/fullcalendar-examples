@@ -1,43 +1,35 @@
+// index.js
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
+const supabase = require('./supabaseClient');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// In-memory event storage (use a database for production)
-let events = [];
-
 app.use(cors());
-app.use(express.json()); // For parsing application/json
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Test route
 app.get('/', (req, res) => {
-  res.send('Hello from Express on Vercel!');
+  res.sendFile(path.join(__dirname, 'public/index.html'));
 });
 
-// Get all events
-app.get('/events', (req, res) => {
-  res.json(events);
+// GET /events — FullCalendar will call this to fetch events
+app.get('/events', async (req, res) => {
+  const { data, error } = await supabase.from('events').select('*');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
 });
 
-// Add a new event
-app.post('/events', (req, res) => {
-  const { title, date, time, description } = req.body;
-
-  if (!title || !date) {
-    return res.status(400).json({ error: 'Missing required fields: title, date' });
-  }
-
-  const newEvent = {
-    id: events.length + 1,
-    title,
-    date,
-    time: time || '',
-    description: description || '',
-  };
-
-  events.push(newEvent);
-  res.status(201).json(newEvent);
+// POST /events — FullCalendar can send new events here
+app.post('/events', async (req, res) => {
+  const { title, start, end, all_day } = req.body;
+  const { data, error } = await supabase.from('events').insert([
+    { title, start, end, all_day }
+  ]);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data[0]);
 });
 
 app.listen(PORT, () => {
